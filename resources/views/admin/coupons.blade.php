@@ -38,6 +38,9 @@
             </div>
             <div class="wg-table table-all-user">
                 <div class="table-responsive">
+                @if(Session::has('success'))
+                    <p class="alert alert-success">{{Session::get('success') }}</p>
+                @endif
                     <table class="table table-striped table-bordered">
                         <thead>
                            
@@ -62,12 +65,14 @@
                                 <td>{{$coupon->expiry_date}}</td>
                                 <td>
                                     <div class="list-icon-function">
-                                        <a href="#">
+                                        <a href="{{route('admin.edit_coupon',$coupon->id)}}">
                                             <div class="item edit">
                                                 <i class="icon-edit-3"></i>
                                             </div>
                                         </a>
-                                        <form action="#" method="POST">
+                                        <form action="{{route('admin.delete_coupon',$coupon->id)}}" method="POST">
+                                            @csrf
+                                            @method('delete')
                                             <div class="item text-danger delete">
                                                 <i class="icon-trash-2"></i>
                                             </div>
@@ -90,3 +95,25 @@
 </div>
 
 @endsection
+@push('scripts')
+    <script>
+        $(function(){
+            $('.delete').on('click',function(e){
+                e.preventDefault();
+                var form =$(this).closest('form');
+                swal({
+                    title : "Are you sure?",
+                    text : "You want to delete this record?",
+                    type : "warning",
+                    buttons : ["No","Yes"],
+                    confirmButtonColor : "#dc3545"
+                }).then(function(result){
+                    if(result){
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+
+@endpush

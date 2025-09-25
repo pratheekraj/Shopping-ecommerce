@@ -2,7 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Coupon;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session as FacadesSession;
+
+
 use Surfsidemedia\Shoppingcart\Facades\Cart;
 
 class CartController extends Controller
@@ -40,5 +46,25 @@ class CartController extends Controller
     public function empty_cart(){
         Cart::instance('cart')->destroy();
         return redirect()->back();
+    }
+
+    public function apply_couponcode(Request $request){
+        $coupon_code = $request->coupon->code;
+        if(isset($coupon_code)){
+            $coupon = Coupon::where('code',$coupon_code)->where('expiry_date','>=',Carbon::today())
+            ->where('cart_value','<=',Cart::instance('cart')->subtotal())->first();
+            if(!$coupon){
+                return redirect()->back()->with('error','Invalid coupon code!');
+            }else{
+                Session::put('coupon',[
+                    'code'=>$coupon->code,
+                    'type'=>$coupon->type,
+                    'value'=>$coupon->value,
+                    'cart_value'=>$coupon->cart_value
+                ]);
+            }
+        }else{
+            return redirect()->back()->with('error','Invalid coupon code!');
+        }
     }
 }
