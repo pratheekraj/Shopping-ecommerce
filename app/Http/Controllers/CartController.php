@@ -7,8 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session as FacadesSession;
-
-
+use Intervention\Image\Colors\Rgb\Channels\Red;
 use Surfsidemedia\Shoppingcart\Facades\Cart;
 
 class CartController extends Controller
@@ -49,10 +48,13 @@ class CartController extends Controller
     }
 
     public function apply_couponcode(Request $request){
-        $coupon_code = $request->coupon->code;
+        $coupon_code = $request->coupon_code;
+        
         if(isset($coupon_code)){
+            $cartSubtotal = (float) str_replace(',', '', Cart::instance('cart')->subtotal());
             $coupon = Coupon::where('code',$coupon_code)->where('expiry_date','>=',Carbon::today())
-            ->where('cart_value','<=',Cart::instance('cart')->subtotal())->first();
+            ->where('cart_value','<=',$cartSubtotal)->first();
+            
             if(!$coupon){
                 return redirect()->back()->with('error','Invalid coupon code!');
             }else{
@@ -62,9 +64,33 @@ class CartController extends Controller
                     'value'=>$coupon->value,
                     'cart_value'=>$coupon->cart_value
                 ]);
+                $this->calculateDiscount();
+                return redirect()->back()->with('success','Coupon has been applies!');
             }
         }else{
             return redirect()->back()->with('error','Invalid coupon code!');
+        }
+    }
+
+    public function calculateDiscount(){
+        $discount = 0;
+        if(Session::has('coupon')){
+            if(Session::get('coupon')['type'] == 'fixed'){
+                $discount = (float)Session::get('coupon')['value'];
+            }else{
+                $discount = (float)(Cart::instance('cart')->subtotal() * Session::get('coupon')['value'])/100;
+            }
+            
+            $subTotalAfterDiscount = (float)Cart::instance('cart')->subtotal() - $discount;
+            $taxAfterDiscount = (float)($subTotalAfterDiscount * config('cart.tax'))/100;
+            $totalAfterDiscount = (float)($subTotalAfterDiscount + $taxAfterDiscount);
+
+            Session::put('discounts',[
+                'discount'=>number_format(floatval($discount),2,'.',''),
+                'subtotal'=>number_format(floatval($subTotalAfterDiscount),2,'.',''),
+                'tax'=>number_format(floatval($taxAfterDiscount),2,'.',''),
+                'total'=>number_format(floatval($totalAfterDiscount),2,'.',''),
+            ]);
         }
     }
 }
